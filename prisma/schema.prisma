@@ -1,14 +1,89 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modèle User : Gère les utilisateurs (clients et admins)
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Mot de passe hashé avec bcrypt
+  role      Role     @default(CLIENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]  // Un utilisateur peut avoir plusieurs commandes
+}
+
+// Enum pour les rôles
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+// Modèle Product : Catalogue des produits
+model Product {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  category    String
+  sku         String    @unique  // Stock Keeping Unit (identifiant unique)
+  isActive    Boolean   @default(true)  // Pour soft delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  inventory   Inventory?  // Un produit a un seul inventaire
+  orderItems  OrderItem[] // Un produit peut être dans plusieurs commandes
+}
+
+// Modèle Inventory : Gestion des stocks
+model Inventory {
+  id        String   @id @default(uuid())
+  productId String   @unique
+  available Int      @default(0)  // Quantité disponible à la vente
+  reserved  Int      @default(0)  // Quantité réservée (commandes en cours)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// Modèle Order : Commandes des clients
+model Order {
+  id         String      @id @default(uuid())
+  userId     String
+  status     OrderStatus @default(PENDING)
+  totalPrice Float
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  items      OrderItem[] // Une commande contient plusieurs items
+}
+
+// Enum pour le statut des commandes
+enum OrderStatus {
+  PENDING    // En attente de paiement
+  PAID       // Payée
+  CANCELLED  // Annulée
+}
+
+// Modèle OrderItem : Items d'une commande (relation many-to-many)
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float    // Prix unitaire au moment de la commande
+  createdAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([orderId, productId])  // Un produit ne peut apparaître qu'une fois par commande
 }
