@@ -36,7 +36,14 @@ export class CatalogService {
   async findAll(filterDto: FilterProductDto) {
     const { category, minPrice, maxPrice, page = 1, limit = 10 } = filterDto;
 
-    const where: any = {
+    const where: {
+      isActive: boolean;
+      category?: string;
+      price?: {
+        gte?: number;
+        lte?: number;
+      };
+    } = {
       isActive: true,
     };
 
