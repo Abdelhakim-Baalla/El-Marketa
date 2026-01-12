@@ -1,35 +1,54 @@
-import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Role } from '@prisma/client';
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+  role: Role;
+}
 
 @Controller('orders')
+@UseGuards(JwtAuthGuard)
 export class OrdersController {
   constructor(private ordersService: OrdersService) {}
 
   @Post()
-  create(@Body() createOrderDto: CreateOrderDto) {
-    const userId = 'temp-user-id';
-    return this.ordersService.create(userId, createOrderDto);
+  create(
+    @CurrentUser() user: JwtPayload,
+    @Body() createOrderDto: CreateOrderDto,
+  ) {
+    return this.ordersService.create(user.sub, createOrderDto);
   }
 
   @Get()
-  findAll() {
-    const userId = 'temp-user-id';
-    const isAdmin = false;
-    return this.ordersService.findAll(userId, isAdmin);
+  findAll(@CurrentUser() user: JwtPayload) {
+    const isAdmin = user.role === Role.ADMIN;
+    return this.ordersService.findAll(user.sub, isAdmin);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    const userId = 'temp-user-id';
-    const isAdmin = false;
-    return this.ordersService.findOne(id, userId, isAdmin);
+  findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const isAdmin = user.role === Role.ADMIN;
+    return this.ordersService.findOne(id, user.sub, isAdmin);
   }
 
   @Patch(':id/cancel')
-  cancel(@Param('id') id: string) {
-    const userId = 'temp-user-id';
-    const isAdmin = false;
-    return this.ordersService.cancel(id, userId, isAdmin);
+  cancel(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const isAdmin = user.role === Role.ADMIN;
+    return this.ordersService.cancel(id, user.sub, isAdmin);
   }
 }
