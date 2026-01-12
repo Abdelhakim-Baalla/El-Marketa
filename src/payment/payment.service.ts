@@ -96,13 +96,18 @@ export class PaymentService {
   }
 
   async handleWebhook(signature: string, payload: Buffer) {
+    console.log('🔔 Webhook handleWebhook called');
+
     const webhookSecret = this.configService.get<string>(
       'STRIPE_WEBHOOK_SECRET',
     );
 
     if (!webhookSecret) {
+      console.error('❌ STRIPE_WEBHOOK_SECRET is not configured');
       throw new BadRequestException('STRIPE_WEBHOOK_SECRET is not configured');
     }
+
+    console.log('✅ Webhook secret found');
 
     let event: Stripe.Event;
 
@@ -112,8 +117,10 @@ export class PaymentService {
         signature,
         webhookSecret,
       );
+      console.log(`✅ Event verified: ${event.type}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`❌ Webhook verification failed: ${errorMessage}`);
       throw new BadRequestException(
         `Webhook signature verification failed: ${errorMessage}`,
       );
@@ -121,39 +128,52 @@ export class PaymentService {
 
     switch (event.type) {
       case 'checkout.session.completed':
+        console.log('🎯 Processing checkout.session.completed');
         await this.handleCheckoutCompleted(
           event.data.object as Stripe.Checkout.Session,
         );
         break;
       case 'payment_intent.payment_failed':
+        console.log('⚠️ Processing payment_intent.payment_failed');
         await this.handlePaymentFailed(
           event.data.object as Stripe.PaymentIntent,
         );
         break;
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`ℹ️ Unhandled event type: ${event.type}`);
     }
 
     return { received: true };
   }
 
   private async handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+    console.log('📦 handleCheckoutCompleted called');
+    console.log('Session metadata:', session.metadata);
+
     const orderId = session.metadata?.orderId;
 
     if (!orderId) {
-      console.error('No orderId in session metadata');
+      console.error('❌ No orderId in session metadata');
       return;
     }
 
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: OrderStatus.PAID,
-        paidAt: new Date(),
-      },
-    });
+    console.log(`🔄 Updating order ${orderId} to PAID...`);
 
-    console.log(`✅ Order ${orderId} marked as PAID`);
+    try {
+      const updatedOrder = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.PAID,
+          paidAt: new Date(),
+        },
+      });
+
+      console.log(`✅ Order ${orderId} marked as PAID`);
+      console.log('Updated order status:', updatedOrder.status);
+    } catch (error) {
+      console.error(`❌ Failed to update order ${orderId}:`, error);
+      throw error;
+    }
   }
 
   private async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
