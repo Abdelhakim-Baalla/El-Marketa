@@ -8,11 +8,12 @@ import { CatalogModule } from './catalog/catalog.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentModule } from './payment/payment.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }), // Charge les variables .env
-    PrismaModule, AuthModule, CatalogModule, InventoryModule, OrdersModule, PaymentModule, // Ajoute le module Prisma
+    PrismaModule, AuthModule, CatalogModule, InventoryModule, OrdersModule, PaymentModule, NotificationsModule, // Ajoute le module Prisma
   ],
   controllers: [AppController],
   providers: [AppService],
