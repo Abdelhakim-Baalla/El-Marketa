@@ -12,8 +12,14 @@ import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), // Charge les variables .env
-    PrismaModule, AuthModule, CatalogModule, InventoryModule, OrdersModule, PaymentModule, NotificationsModule, // Ajoute le module Prisma
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    AuthModule,
+    CatalogModule,
+    InventoryModule,
+    OrdersModule,
+    PaymentModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

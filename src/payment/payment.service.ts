@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { OrderStatus } from '@prisma/client';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class PaymentService {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private notificationsService: NotificationsService,
   ) {
     const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
     if (!secretKey) {
@@ -63,10 +65,10 @@ export class PaymentService {
 
     const successUrl =
       this.configService.get<string>('STRIPE_SUCCESS_URL') ||
-      'http://localhost:3000/payment/success';
+      'http://localhost:3001/payment/success';
     const cancelUrl =
       this.configService.get<string>('STRIPE_CANCEL_URL') ||
-      'http://localhost:3000/payment/cancel';
+      'http://localhost:3001/payment/cancel';
 
     const session = await this.stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -151,6 +153,7 @@ export class PaymentService {
     console.log('Session metadata:', session.metadata);
 
     const orderId = session.metadata?.orderId;
+    const userId = session.metadata?.userId;
 
     if (!orderId) {
       console.error('❌ No orderId in session metadata');
@@ -170,6 +173,15 @@ export class PaymentService {
 
       console.log(`✅ Order ${orderId} marked as PAID`);
       console.log('Updated order status:', updatedOrder.status);
+
+      // 🔔 Envoyer une notification WebSocket
+      if (userId) {
+        this.notificationsService.notifyOrderPaid(
+          userId,
+          orderId,
+          updatedOrder.totalPrice,
+        );
+      }
     } catch (error) {
       console.error(`❌ Failed to update order ${orderId}:`, error);
       throw error;
@@ -178,5 +190,13 @@ export class PaymentService {
 
   private async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
     console.error(`❌ Payment failed for intent: ${paymentIntent.id}`);
+
+    // Récupérer l'orderId depuis les métadonnées
+    const orderId = paymentIntent.metadata?.orderId;
+    const userId = paymentIntent.metadata?.userId;
+
+    if (orderId && userId) {
+      this.notificationsService.notifyPaymentFailed(userId, orderId);
+    }
   }
 }
