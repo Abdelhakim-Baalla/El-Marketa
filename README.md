@@ -1,5 +1,7 @@
 # El Marketa
 
+[Parcours du projet](PARCOURS.md)
+
 [Modèle de données du commerce](https://github.com/Abdelhakim-Baalla/El-Marketa/blob/main/prisma/schema.prisma)
 
 Une plateforme e-commerce backend scalable avec NestJS, TypeScript, Prisma et PostgreSQL.
